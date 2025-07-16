@@ -117,7 +117,7 @@
             0%   { transform: translate(0, 0); }
             100% { transform: translate(-100%, 0); }
         }
-        #help-modal {
+        #help-modal, #api-key-modal {
             display: none;
         }
 
@@ -153,7 +153,7 @@
             .main-app {
                 display: block !important;
             }
-            header, .marquee-container, .form-section, .btn, #output-container, #help-modal, #login-screen {
+            header, .marquee-container, .form-section, .btn, #output-container, #help-modal, #login-screen, #api-key-modal {
                 display: none !important;
             }
             .output-section {
@@ -241,6 +241,9 @@
             <div class="container mx-auto flex justify-between items-center">
                 <h1 class="text-2xl font-bold text-blue-700">RPP GENERATOR DEEP LEARNING</h1>
                 <div class="flex items-center space-x-4">
+                     <button id="api-key-btn" class="btn btn-secondary bg-yellow-500 hover:bg-yellow-600">
+                        <i class="fas fa-key mr-2"></i> API Key
+                    </button>
                     <button id="help-btn" class="btn btn-secondary">
                         <i class="fas fa-question-circle mr-2"></i> Bantuan
                     </button>
@@ -339,7 +342,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="kktp-tercapai-min" class="form-label">Nilai Minimal "Tercapai"</label>
-                        <input type="number" id="kktp-tercapai-min" class="form-input" value="80" min="0" max="100">
+                        <input type="number" id="kktp-tercapai-min" class="form-input" value="70" min="0" max="100">
                     </div>
                     <!-- Removed the "Nilai Minimal 'Hampir Tercapai'" field as per user request -->
                 </div>
@@ -386,7 +389,7 @@
                     </div>
                     <div>
                         <label for="lingkungan-pembelajaran-rpp" class="form-label">Lingkungan Pembelajaran</label>
-                        <input type="text" id="lingkungan-pembelajaran-rpp" class="form-input" value="Budaya tertib, bersih, disiplin (5K), Adi Wiyata">
+                        <input type="text" id="lingkungan-pembelajaran-rpp" class="form-input" value="Budaya tertib, bersih, disiplin (5K), Adiwiyata">
                     </div>
                     <div>
                         <label for="pemanfaatan-digital-perencanaan" class="form-label">Pemanfaatan Digital (Perencanaan)</label>
@@ -466,6 +469,7 @@
                 <p>Selamat datang di RPP Generator. Ikuti langkah-langkah berikut untuk membuat RPP secara otomatis:</p>
                 <ol class="list-decimal list-inside space-y-2">
                     <li><strong>Login:</strong> Masukkan username dan password yang telah ditentukan untuk masuk ke aplikasi.</li>
+                    <li><strong>API Key:</strong> Klik tombol <i class="fas fa-key"></i> <strong>API Key</strong> di header, masukkan API Key Gemini Anda, lalu klik simpan. Anda hanya perlu melakukan ini sekali.</li>
                     <li><strong>Isi Identitas Modul & Siswa:</strong> Lengkapi semua data pada formulir pertama, seperti nama sekolah, jenjang, hingga data identifikasi awal siswa.</li>
                     <li><strong>Masukkan Capaian Pembelajaran:</strong> Tulis kalimat CP atau beberapa materi pokok pada kolom yang tersedia.</li>
                     <li><strong>Generate TP, ATP, KKTP:</strong> Klik tombol "Lanjutkan" atau "Buat" pada setiap langkah. Aplikasi akan otomatis menghasilkan Tujuan Pembelajaran (TP), Alur Tujuan Pembelajaran (ATP), dan Kriteria Ketercapaian (KKTP) berdasarkan materi yang Anda input.</li>
@@ -480,11 +484,33 @@
         </div>
     </div>
     
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg p-8 max-w-lg w-full">
+            <h2 class="text-2xl font-bold mb-4">Masukkan API Key Gemini Anda</h2>
+            <p class="text-gray-600 mb-4">
+                Untuk menggunakan fitur AI, Anda memerlukan API Key dari Google AI Studio. Dapatkan kunci Anda secara gratis di
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 hover:underline">Google AI Studio</a>.
+            </p>
+            <div id="api-key-save-success" class="text-green-600 bg-green-100 p-3 rounded-md mb-4 hidden">
+                API Key berhasil disimpan!
+            </div>
+            <div>
+                <label for="api-key-input" class="form-label">API Key</label>
+                <input type="password" id="api-key-input" class="form-input" placeholder="Masukkan API Key Anda di sini">
+            </div>
+            <div class="text-right mt-6 space-x-2">
+                <button id="close-api-key-btn" class="btn btn-secondary">Tutup</button>
+                <button id="save-api-key-btn" class="btn btn-primary">Simpan</button>
+            </div>
+        </div>
+    </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- STATE MANAGEMENT ---
+    let userApiKey = ''; // To store the user's Gemini API key
     const rppData = {
         namaSekolah: '', jenjang: '', mapel: '', tahunPelajaran: '', kelasSemester: '', fase: '',
         alokasiWaktu: '', lingkungan: '', namaGuru: '', namaKepsek: '',
@@ -508,6 +534,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const helpBtn = document.getElementById('help-btn');
     const helpModal = document.getElementById('help-modal');
     const closeHelpBtn = document.getElementById('close-help-btn');
+    const apiKeyBtn = document.getElementById('api-key-btn');
+    const apiKeyModal = document.getElementById('api-key-modal');
+    const closeApiKeyBtn = document.getElementById('close-api-key-btn');
+    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const apiKeySaveSuccess = document.getElementById('api-key-save-success');
     const jenjangSelect = document.getElementById('jenjang-sekolah');
     const kelasSelect = document.getElementById('kelas-semester');
     const faseSelect = document.getElementById('fase');
@@ -561,6 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     initializeAppElements();
+    loadApiKey(); // Load API key on startup
 
     // --- EVENT LISTENERS ---
     loginBtn.addEventListener('click', () => {
@@ -574,6 +607,15 @@ document.addEventListener('DOMContentLoaded', function() {
     logoutBtn.addEventListener('click', () => window.location.reload());
     helpBtn.addEventListener('click', () => helpModal.style.display = 'flex');
     if (closeHelpBtn) closeHelpBtn.addEventListener('click', () => helpModal.style.display = 'none');
+    
+    // API Key Modal Listeners
+    apiKeyBtn.addEventListener('click', () => {
+        apiKeyInput.value = userApiKey; // Show current key in input
+        apiKeyModal.style.display = 'flex';
+    });
+    closeApiKeyBtn.addEventListener('click', () => apiKeyModal.style.display = 'none');
+    saveApiKeyBtn.addEventListener('click', saveApiKey);
+
     jenjangSelect.addEventListener('change', updateKelasFaseOptions);
     generateTpBtn.addEventListener('click', handleGenerateTP);
     generateAtpBtn.addEventListener('click', handleGenerateATP);
@@ -593,6 +635,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // --- FUNCTIONS ---
+    
+    function loadApiKey() {
+        const savedKey = localStorage.getItem('geminiApiKey');
+        if (savedKey) {
+            userApiKey = savedKey;
+            console.log('API Key loaded from localStorage.');
+        } else {
+            console.log('No API Key found in localStorage.');
+        }
+    }
+
+    function saveApiKey() {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            userApiKey = key;
+            localStorage.setItem('geminiApiKey', key);
+            apiKeySaveSuccess.classList.remove('hidden');
+            setTimeout(() => {
+                apiKeySaveSuccess.classList.add('hidden');
+                apiKeyModal.style.display = 'none';
+            }, 2000);
+        } else {
+            alert('API Key tidak boleh kosong.');
+        }
+    }
+
     function updateKelasFaseOptions() {
         const jenjang = jenjangSelect.value;
         const kelasOptions = {
@@ -713,13 +781,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Validation result:', isValid, rppData); // Debugging line
         return isValid;
     }
+    
+    function checkApiKey() {
+        if (!userApiKey) {
+            validationError.innerHTML = `<strong>API Key Diperlukan.</strong> Silakan masukkan API Key Gemini Anda melalui tombol <i class="fas fa-key"></i> <strong>API Key</strong> di bagian atas halaman. Dapatkan kunci gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 hover:underline">Google AI Studio</a>.`;
+            validationError.classList.remove('hidden');
+            apiKeyModal.style.display = 'flex';
+            apiKeyInput.focus();
+            return false;
+        }
+        return true;
+    }
 
     async function handleGenerateTP() {
-        if (!captureAndValidateData()) {
-            console.log("Validation failed, not proceeding to generate TP."); // Debugging line
+        if (!captureAndValidateData() || !checkApiKey()) {
+            console.log("Validation or API Key check failed, not proceeding to generate TP.");
             return;
         }
-        console.log("Validation passed, proceeding to generate TP."); // Debugging line
+        console.log("Validation passed, proceeding to generate TP.");
 
         tpOutput.innerHTML = `<div class="flex items-center justify-center p-4"><div class="loader mr-4"></div><p>AI sedang menganalisis CP dan membuat Tujuan Pembelajaran...</p></div>`;
         outputContainer.classList.remove('hidden');
@@ -770,12 +849,12 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+            const apiKey = userApiKey; // Use the stored user API key
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
-            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}. Pastikan API Key Anda valid.`); }
             
             const result = await response.json(); // Await the JSON parsing
             const aiResult = JSON.parse(result.candidates[0].content.parts[0].text);
@@ -798,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
             printTpBtn.classList.remove('hidden'); // Show print button
         } catch (error) {
             console.error("Error generating TPs:", error);
-            tpOutput.innerHTML = `<p class="text-red-500">Gagal menganalisis CP dengan AI. Pastikan format CP jelas atau coba lagi nanti. Detail: ${error.message}</p>`;
+            tpOutput.innerHTML = `<p class="text-red-500">Gagal menganalisis CP dengan AI. Pastikan API Key Anda valid dan coba lagi nanti. Detail: ${error.message}</p>`;
         }
     }
 
@@ -865,8 +944,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function handleGenerateRPP() {
-        if (!captureAndValidateData()) { // Re-validate before generating RPP
-            rppOutputContainer.innerHTML = `<p class="text-red-500">Harap lengkapi dan perbaiki semua isian formulir sebelum membuat RPP Lengkap.</p>`;
+        if (!captureAndValidateData() || !checkApiKey()) {
+            rppOutputContainer.innerHTML = `<p class="text-red-500">Harap lengkapi semua isian formulir dan pastikan API Key sudah dimasukkan sebelum membuat RPP Lengkap.</p>`;
             rppOutputContainer.classList.remove('hidden');
             rppOutputContainer.scrollIntoView({ behavior: 'smooth' });
             return;
@@ -941,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <li>Model Pembelajaran: ${modelPembelajaran} berbasis Flipped Classroom</li>
                                 <li>Pendekatan Pembelajaran: Konstruktivisme</li>
                                 <li>Strategi Pembelajaran: Inkuiri</li>
-                                <li>Metode Pembelajaran: Diskusi – Tanya Jawab - Ceramah</li>
+                                <li>Metode Pembelajaran: Diskusi â€“ Tanya Jawab - Ceramah</li>
                             </ul>
                         </li>
                         <li><strong>Kemitraan Pembelajaran</strong>
@@ -1025,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const schema = { type: "OBJECT", properties: { "pilihan_ganda": { type: "ARRAY", items: { type: "OBJECT", properties: { "pertanyaan": { "type": "STRING" }, "opsi": { type: "OBJECT", properties: { "A": { "type": "STRING" }, "B": { "type": "STRING" }, "C": { "type": "STRING" }, "D": { "type": "STRING" }, "E": { "type": "STRING" } }, required: ["A", "B", "C", "D", "E"] }, "kunci": { "type": "STRING" } }, required: ["pertanyaan", "opsi", "kunci"] } }, "uraian": { type: "ARRAY", items: { type: "OBJECT", properties: { "pertanyaan": { "type": "STRING" }, "pembahasan": { "type": "STRING" } }, required: ["pertanyaan", "pembahasan"] } } }, required: ["pilihan_ganda", "uraian"] };
                     
                     try {
-                        const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                        const apiKey = userApiKey; // Use the stored user API key
                         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
                         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
                         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1051,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <h4 class="font-semibold text-lg">III. Format Penilaian</h4>
                                 <h5 class="font-semibold text-md mt-4">A. Penilaian Soal Pilihan Ganda</h5>
                                 <p>Setiap jawaban yang benar pada soal pilihan ganda akan diberi skor 1. Skor maksimal untuk pilihan ganda adalah ${aicontent.pilihan_ganda.length}.</p>
-                                <p><strong>Skor Akhir Pilihan Ganda = (Jumlah Jawaban Benar / (aicontent.pilihan_ganda.length)) x 100</strong></p>
+                                <p><strong>Skor Akhir Pilihan Ganda = (Jumlah Jawaban Benar / ${aicontent.pilihan_ganda.length}) x 100</strong></p>
                                 
                                 <h5 class="font-semibold text-md mt-6">B. Penilaian Soal Uraian</h5>
                                 <p>Setiap soal uraian akan dinilai berdasarkan rubrik berikut (skala 0-4):</p>
@@ -1085,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </tr>
                                     </tbody>
                                 </table>
-                                <p class="mt-4"><strong>Skor Akhir Uraian = (Total Skor Uraian / (Jumlah Soal Uraian x 4)) x 100</strong></p>
+                                <p class="mt-4"><strong>Skor Akhir Uraian = (Total Skor Uraian / (${aicontent.uraian.length} x 4)) x 100</strong></p>
                                 <p><strong>Skor Total = (Skor Akhir Pilihan Ganda + Skor Akhir Uraian) / 2</strong></p>
                             </div>
                         `;
@@ -1093,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return `<div class="lampiran-section mt-8" style="page-break-before: always;"><h3 class="font-bold text-xl">LAMPIRAN: INSTRUMEN PENILAIAN</h3><h4 class="font-semibold text-lg mt-4">I. Soal Pilihan Ganda</h4><ol class="list-decimal list-inside space-y-3 mb-4">${pgHtml}</ol><h5 class="font-bold">Kunci Jawaban Pilihan Ganda</h5><div>${kunciJawaban}</div><h4 class="font-semibold text-lg mt-6">II. Soal Uraian</h4><ol class="list-decimal list-inside space-y-4">${uraianHtml}</ol>${scoringFormatHtml}</div>`;
                     } catch (error) {
                         console.error("Error generating HOTS questions:", error);
-                        return `<div class="lampiran-section mt-8" style="page-break-before: always;"><h3 class="font-bold text-xl">LAMPIRAN: INSTRUMEN PENILAIAN</h3><p class="text-red-500">Gagal membuat soal dengan AI. Silakan coba lagi nanti. Detail: ${error.message}</p></div>`;
+                        return `<div class="lampiran-section mt-8" style="page-break-before: always;"><h3 class="font-bold text-xl">LAMPIRAN: INSTRUMEN PENILAIAN</h3><p class="text-red-500">Gagal membuat soal dengan AI. Pastikan API Key Anda valid. Detail: ${error.message}</p></div>`;
                     }
                 };
                 
